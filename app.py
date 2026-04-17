@@ -34,7 +34,7 @@ def cleanup_old_images(days=7):
 
 @st.cache_resource
 def load_ocr():
-    """OCR 엔진 로드 (캐싱하여 속도 향상)"""
+    """OCR 엔진 로드 : 캐싱하여 속도 향상"""
     return easyocr.Reader(['ko', 'en'])
 
 def run_ocr(image):
@@ -52,11 +52,11 @@ st.set_page_config(page_title="코테 스터디 출석부", layout="wide")
 init_db()
 cleanup_old_images() # 실행 시 자동 청소
 
-st.title("🚀 코딩 테스트 출석 대시보드")
-st.sidebar.header("📍 출석 체크")
+st.title("SQL 쿼리 스터디 출석 대시보드")
+st.sidebar.header("📆출석 체크")
 
 # 팀원 명단 (여기에 팀원 이름을 넣으세요)
-team_members = ["팀원A", "팀원B", "팀원C", "팀원D", "팀원E"]
+team_members = ["김예지", "손승안", "안재영", "오준석", "최다희"]
 selected_name = st.sidebar.selectbox("내 이름 선택", team_members)
 uploaded_file = st.sidebar.file_uploader("인증샷 업로드 (LeetCode, Programmers 등)", type=['png', 'jpg', 'jpeg'])
 
@@ -112,7 +112,7 @@ if not df.empty:
     st.dataframe(display_df[['name', 'date', 'time', 'status']], use_container_width=True)
     
     # 간단한 그래프 (인원별 통계)
-    st.subheader("👤 팀원별 누적 출석")
+    st.subheader("📊 팀원별 누적 출석")
     chart_data = df['name'].value_counts()
     st.bar_chart(chart_data)
 else:
