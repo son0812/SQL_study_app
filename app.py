@@ -67,7 +67,7 @@ conn.close()
 if already_exists:
     st.sidebar.warning("오늘은 이미 출석 완료했습니다 ✅")
 
-submit_btn = st.sidebar.button("데이터 분석 및 제출", disabled=bool(already_exists))
+submit_btn = st.sidebar.button("제출", disabled=bool(already_exists))
 
 # --- 제출 처리 ---
 if uploaded_file and submit_btn:
