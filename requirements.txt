@@ -1,5 +1,4 @@
-streamlit
+streamlit==1.33.0
 pandas
 easyocr
 opencv-python-headless
-streamlit==1.33.0
