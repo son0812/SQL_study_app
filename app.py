@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import os
 from datetime import datetime
 import easyocr
 import numpy as np
@@ -15,7 +14,6 @@ def init_db():
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS attendance (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             date TEXT,
             time TEXT,
@@ -38,7 +36,7 @@ def run_ocr(image):
 
     keywords = ["Success", "Accepted", "정답", "Pass", "통과"]
     is_success = any(word.lower() in full_text.lower() for word in keywords)
-    return is_success, full_text
+    return is_success
 
 # --- 3. UI ---
 st.set_page_config(page_title="코테 스터디 출석부", layout="wide")
@@ -69,35 +67,31 @@ if uploaded_file and submit_btn:
     img = Image.open(uploaded_file)
 
     with st.spinner("이미지 분석 중..."):
-        success_found, detected_text = run_ocr(img)
+        success_found = run_ocr(img)
 
-        now = datetime.now()
-        today = now.strftime("%Y-%m-%d")
-
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-
-        # 최종 중복 체크
-        c.execute("SELECT * FROM attendance WHERE name=? AND date=?", (selected_name, today))
-        already_exists = c.fetchone()
-
-        if already_exists:
-            st.sidebar.warning("이미 제출됨")
+        if not success_found:
+            st.sidebar.error("❌ 이미지 인식 불가. Teams로 접속해서 제출해주세요.")
         else:
-            status = "Y" if success_found else "확인필요"
+            now = datetime.now()
 
-            c.execute(
-                "INSERT INTO attendance (name, date, time, status) VALUES (?, ?, ?, ?)",
-                (selected_name, today, now.strftime("%H:%M:%S"), status)
-            )
-            conn.commit()
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
 
-            if success_found:
-                st.sidebar.success("출석 완료!")
+            # 중복 체크
+            c.execute("SELECT * FROM attendance WHERE name=? AND date=?", (selected_name, today))
+            already_exists = c.fetchone()
+
+            if already_exists:
+                st.sidebar.warning("이미 제출됨")
             else:
-                st.sidebar.warning("확인 필요 (관리자 승인 대기)")
+                c.execute(
+                    "INSERT INTO attendance (name, date, time, status) VALUES (?, ?, ?, ?)",
+                    (selected_name, today, now.strftime("%H:%M:%S"), "Y")
+                )
+                conn.commit()
+                st.sidebar.success("출석 완료!")
 
-        conn.close()
+            conn.close()
 
 # --- 4. 대시보드 ---
 conn = sqlite3.connect(DB_FILE)
@@ -121,26 +115,5 @@ if not df.empty:
     st.bar_chart(df['name'].value_counts())
 else:
     st.info("데이터 없음")
-
-conn.close()
-
-# --- 5. 관리자 승인 ---
-st.markdown("---")
-st.subheader("관리자 승인")
-
-conn = sqlite3.connect(DB_FILE)
-df_admin = pd.read_sql_query("SELECT * FROM attendance WHERE status='확인필요'", conn)
-
-if not df_admin.empty:
-    for idx, row in df_admin.iterrows():
-        st.write(f"{row['name']} | {row['date']} | {row['time']}")
-
-        if st.button(f"승인_{row['id']}"):
-            c = conn.cursor()
-            c.execute("UPDATE attendance SET status='Y' WHERE id=?", (row['id'],))
-            conn.commit()
-            st.success("승인 완료")
-else:
-    st.info("승인 대기 없음")
 
 conn.close()
