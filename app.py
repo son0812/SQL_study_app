@@ -5,8 +5,9 @@ from datetime import datetime, timedelta
 import easyocr
 import numpy as np
 from PIL import Image
+import altair as alt
 
-# --- KST 시간 함수 추가 ---
+# --- KST 시간 ---
 def get_kst_now():
     return datetime.utcnow() + timedelta(hours=9)
 
@@ -52,7 +53,7 @@ team_members = ["김예지", "손승안", "안재영", "오준석", "최다희"]
 selected_name = st.sidebar.selectbox("내 이름 선택", team_members)
 uploaded_file = st.sidebar.file_uploader("인증샷 업로드", type=['png', 'jpg', 'jpeg'])
 
-# --- KST 기준 시간 ---
+# --- 시간 ---
 now = get_kst_now()
 today = now.strftime("%Y-%m-%d")
 
@@ -76,7 +77,7 @@ if uploaded_file and submit_btn:
         success_found = run_ocr(img)
 
         if not success_found:
-            st.sidebar.error("❌ 이미지 인식 불가. Teams로 접속해서 제출해주세요.")
+            st.sidebar.error("❌ 이미지 인식 불가. 정답화면으로 다시 제출하거나 Teams로 접속해서 제출해주세요.")
         else:
             conn = sqlite3.connect(DB_FILE)
             c = conn.cursor()
@@ -109,13 +110,25 @@ col3.metric("현재 시간", now.strftime("%H:%M"))
 
 st.markdown("---")
 
+# --- 최근 출석 ---
 st.subheader("📋 최근 출석")
 if not df.empty:
     display_df = df.sort_values(by=['date', 'time'], ascending=False).head(20)
     st.dataframe(display_df[['name', 'date', 'time', 'status']], use_container_width=True)
 
+    # --- 그래프 ---
     st.subheader("📊 출석 통계")
-    st.bar_chart(df['name'].value_counts())
+
+    chart_data = df['name'].value_counts().reset_index()
+    chart_data.columns = ['name', 'count']
+
+    chart = alt.Chart(chart_data).mark_bar().encode(
+        x=alt.X('name:N', axis=alt.Axis(labelAngle=0)),  
+        y='count:Q'
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
 else:
     st.info("데이터 없음")
 
