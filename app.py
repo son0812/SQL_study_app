@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import easyocr
 import numpy as np
 from PIL import Image
+
+# --- KST 시간 함수 추가 ---
+def get_kst_now():
+    return datetime.utcnow() + timedelta(hours=9)
 
 # --- 1. 초기 설정 ---
 DB_FILE = 'attendance.db'
@@ -35,8 +39,7 @@ def run_ocr(image):
     full_text = " ".join(result)
 
     keywords = ["Success", "Accepted", "정답", "Pass", "통과"]
-    is_success = any(word.lower() in full_text.lower() for word in keywords)
-    return is_success
+    return any(word.lower() in full_text.lower() for word in keywords)
 
 # --- 3. UI ---
 st.set_page_config(page_title="코테 스터디 출석부", layout="wide")
@@ -49,8 +52,11 @@ team_members = ["김예지", "손승안", "안재영", "오준석", "최다희"]
 selected_name = st.sidebar.selectbox("내 이름 선택", team_members)
 uploaded_file = st.sidebar.file_uploader("인증샷 업로드", type=['png', 'jpg', 'jpeg'])
 
+# --- KST 기준 시간 ---
+now = get_kst_now()
+today = now.strftime("%Y-%m-%d")
+
 # --- 제출 여부 체크 ---
-today = datetime.now().strftime("%Y-%m-%d")
 conn = sqlite3.connect(DB_FILE)
 c = conn.cursor()
 c.execute("SELECT * FROM attendance WHERE name=? AND date=?", (selected_name, today))
@@ -72,12 +78,9 @@ if uploaded_file and submit_btn:
         if not success_found:
             st.sidebar.error("❌ 이미지 인식 불가. Teams로 접속해서 제출해주세요.")
         else:
-            now = datetime.now()
-
             conn = sqlite3.connect(DB_FILE)
             c = conn.cursor()
 
-            # 중복 체크
             c.execute("SELECT * FROM attendance WHERE name=? AND date=?", (selected_name, today))
             already_exists = c.fetchone()
 
@@ -102,7 +105,7 @@ today_count = len(df[df['date'] == today]) if not df.empty else 0
 
 col1.metric("오늘 출석", f"{today_count} / {len(team_members)}")
 col2.metric("총 제출", len(df))
-col3.metric("현재 시간", datetime.now().strftime("%H:%M"))
+col3.metric("현재 시간", now.strftime("%H:%M"))
 
 st.markdown("---")
 
